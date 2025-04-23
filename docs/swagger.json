@@ -1,0 +1,80 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is a coding server for Networking.",
+        "title": "Swagger API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/code": {
+            "post": {
+                "description": "Codes and decodes messages",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "code"
+                ],
+                "summary": "Codes and decodes messages",
+                "parameters": [
+                    {
+                        "description": "data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.DATA"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "main.DATA": {
+            "type": "object",
+            "required": [
+                "data",
+                "message_id",
+                "segment_number",
+                "send_time",
+                "total_segments",
+                "username"
+            ],
+            "properties": {
+                "data": {
+                    "type": "string"
+                },
+                "message_id": {
+                    "type": "string"
+                },
+                "segment_number": {
+                    "type": "integer"
+                },
+                "send_time": {
+                    "type": "string"
+                },
+                "socket_id": {
+                    "type": "integer"
+                },
+                "total_segments": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
