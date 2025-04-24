@@ -12,144 +12,150 @@ import (
 	anotherRand "golang.org/x/exp/rand"
 )
 
+// Исправление одного бита ошибки на основе синдрома ошибки
 func fixMistake(mistake byte, data byte) byte {
 	switch mistake {
-	case 1:
-		return data ^ 1
-	case 2:
-		return data ^ 2
-	case 4:
-		return data ^ 4
-	case 3:
-		return data ^ 8
-	case 6:
-		return data ^ 16
-	case 7:
-		return data ^ 32
-	case 5:
-		return data ^ 64
+	case 1, 2, 4, 8, 16, 32, 64:
+		return data ^ mistake
 	default:
 		return data
-
 	}
 }
+
+// Кодирование одного 4-битного блока (вход — 1 байт, выход — 7-битный код с проверкой на ошибки)
 func rcrEncode(data byte) byte {
-	num := data << 3
+	num := data << 3 // смещаем влево на 3 бита, оставляя место для контрольных
 	buf := num
-	pol := byte(11 << 3)
-	var res byte
+	pol := byte(11 << 3) // полином для деления
+
 	for i := 0; i < 4; i++ {
 		if bits.Len8(buf) < bits.Len8(pol) {
-			//fmt.Println(bits.Len8(buf), bits.Len8(pol))
-			pol = pol >> 1
+			pol >>= 1
 			continue
 		}
-		res = buf ^ pol
-		pol = pol >> 1
-		buf = res
-		//fmt.Printf("Result %d: %03b, generating polinom: %b \n", i, res, pol)
+		buf ^= pol
+		pol >>= 1
 	}
-	//fmt.Printf("coded string: %b", num|res)
-	return num | res
+	return num | buf // объединяем исходные данные с остатком
 }
-func decode(data []byte) byte {
 
-	//buf := data
+// Декодирование одного блока данных, возвращает байт и флаг валидности
+func decode(data []byte) (byte, bool) {
+	valid := true
 
-	for i, buf := range data {
+	for i := range data {
 		pol := byte(11) << 3
+		buf := data[i]
 		var res byte
-		for i := 0; i < 4; i++ {
-			if bits.Len8(buf) < bits.Len8(pol) && bits.Len8(buf) >= 4 {
-				//fmt.Println(bits.Len8(buf), bits.Len8(pol))
-				pol = pol >> 1
-				continue
-			}
+
+		for j := 0; j < 4; j++ {
 			if bits.Len8(buf) < 4 {
 				res = buf
 				break
 			}
+			if bits.Len8(buf) < bits.Len8(pol) {
+				pol >>= 1
+				continue
+			}
 			res = buf ^ pol
-			pol = pol >> 1
 			buf = res
-			if bits.Len8(pol) < 4 {
-				break
-			}
-			if res == 0 {
-				break
-			}
-			//fmt.Printf("Result %d: %03b, generating polinom: %b \n", i, res, pol)
-
+			pol >>= 1
 		}
 
+		// Ошибка не найдена
 		if res == 0 {
 			data[i] = data[i] >> 3
 		} else {
+			// Попытка исправления — если более 1 ошибки, помечаем как невалидный
+			if bits.OnesCount8(res) > 1 {
+				valid = false
+			}
 			data[i] = fixMistake(res, data[i]) >> 3
-			//fmt.Println("res: ", res, " buf: ", buf, " pol: ", pol)
-			//fmt.Printf("mistake syndrom :%b \n", res)
-			//fmt.Printf("%d fixed mistake:%b - %c \n", i, data[i], data[i])
 		}
-
 	}
-	return data[0]<<4 | data[1]
 
+	// Склеиваем два полубайта в один байт
+	return data[0]<<4 | data[1], valid
 }
 
-// будем считать, что нам пришел байт с информацией.
-// наш циклический код может закодировать только 4 бита, а закодированная инф-я будет занимать 7 бит
-// предлагаю выделить первую и вторю четверку битов(обнулением всех остальных), прогнать через алгоритм циклического кодирования
-// в итоге из исходного 1 байта получим 2 байта, в начале каждого будет 1 нулевой бит, который не используем.
-func encode(data byte) (result []byte) {
-	b1 := data & 240 >> 4
-	b2 := data & 15
-	//fmt.Println("halfs", b1, "  ", b2)
+// Разделение байта на два полубайта и кодирование каждого
+func encode(data byte) []byte {
+	b1 := data & 240 >> 4 // первые 4 бита
+	b2 := data & 15       // вторые 4 бита
 	return []byte{rcrEncode(b1), rcrEncode(b2)}
-
 }
-func makeMistake(data byte) (result byte) {
 
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	num := r.Intn(100) % 10
+// Внесение 1–3 случайных ошибок в 1 байт с вероятностной моделью
+func makeAdvancedMistakes(data []byte, byteIndex int, randSrc anotherRand.Source) {
+	r := rand.New(randSrc)
 
-	if num == 0 {
-
-		data = data ^ byte(math.Pow(2, float64(r.Intn(7))))
+	chance := r.Intn(100)
+	numErrors := 1
+	if chance < 10 {
+		numErrors = 3 // 10% шанс на 3 ошибки
+	} else if chance < 30 {
+		numErrors = 2 // 20% шанс на 2 ошибки
 	}
 
-	return data
+	for i := 0; i < numErrors; i++ {
+		bitToFlip := r.Intn(7)
+		byteInPair := r.Intn(2)
+		data[byteInPair] ^= (1 << bitToFlip) // инвертируем случайный бит
+	}
 }
-func ProcessMessage(msg string, randSrc anotherRand.Source) (res string, err error) {
 
+// Обработка полного сообщения: кодирование, внесение ошибок, декодирование
+func ProcessMessage(msg string, randSrc anotherRand.Source) (res string, err error) {
+	// Случайная позиция для внесения ошибок
 	errorPos := norm.GenerateNormalInt(0, min(len(msg), 100), 130/8, 13, randSrc)
 
 	var processedMsg []byte
-	var data []byte
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	if r.Intn(100)%20 == 0 { //вероятность потери сообщения 2%
+
+	// 5% вероятность потери всего сообщения
+	if r.Intn(100)%20 == 0 {
 		fmt.Println("lost message ")
 		return "", errors.New("lost message")
 	}
+
 	encodedMsg := []byte{}
 	messageWithErrors := []byte{}
 	decodedMessage := []byte{}
+
 	for i := 0; i < len(msg); i++ {
-		data = encode(msg[i])
+		data := encode(msg[i]) // кодируем байт
 		encodedMsg = append(encodedMsg, data...)
+
 		if i == errorPos {
-			data[0] = makeMistake(data[0])
-			data[1] = makeMistake(data[1])
+			makeAdvancedMistakes(data, i, randSrc) // вносим ошибки в выбранный байт
 		}
 
 		messageWithErrors = append(messageWithErrors, data...)
-		decodedData := decode(data)
-		decodedMessage = append(decodedMessage, decodedData)
-		processedMsg = append(processedMsg, decodedData)
+
+		decodedByte, valid := decode(data) // декодируем
+
+		if !valid {
+			fmt.Printf("Не удалось восстановить байт %d. Байт утерян.\n", i)
+			return "", errors.New("uncorrectable block error")
+		}
+
+		decodedMessage = append(decodedMessage, decodedByte)
+		processedMsg = append(processedMsg, decodedByte)
 	}
+
+	// Вывод всех этапов в консоль
 	fmt.Println("Исходное сообщение: ", msg)
 	fmt.Println("Закодированное сообщение: ", string(encodedMsg))
 	fmt.Println("Сообщение с ошибкой: ", string(messageWithErrors))
 	fmt.Println("Декодированное сообщение: ", string(decodedMessage))
 
 	return string(processedMsg), nil
+}
+
+// Возвращает минимальное значение двух чисел
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
