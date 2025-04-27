@@ -1,0 +1,13 @@
+services:
+  mainc:
+    build:
+      context: .
+      dockerfile: ./build/mainc.Dockerfile
+    ports:
+      - "8020:8020"
+    networks:
+      - kr-network
+  
+networks:
+  kr-network:
+    external: true
