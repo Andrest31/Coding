@@ -3,14 +3,13 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
 
 	"st/coding" // импорт нашего пакета с кодированием
-	_ "st/docs"  // подключение сгенерированной swagger-документации
+	_ "st/docs" // подключение сгенерированной swagger-документации
 
 	"github.com/gin-gonic/gin"
 	swaggerfiles "github.com/swaggo/files"
@@ -29,8 +28,8 @@ func init() {
 
 // Структура входных и выходных данных
 type DATA struct {
-	Id            int    `json:"socket_id,omitempty"`    // ID сокета (опционально)
-	Data          string `json:"data" binding:"required"` // Полезная нагрузка
+	Id            int    `json:"socket_id,omitempty"`               // ID сокета (опционально)
+	Data          string `json:"data" binding:"required"`           // Полезная нагрузка
 	SegmentNumber int    `json:"segment_number" binding:"required"` // Номер сегмента
 	TotalSegments int    `json:"total_segments" binding:"required"` // Общее число сегментов
 	Username      string `json:"username" binding:"required"`       // Имя пользователя
@@ -42,7 +41,7 @@ type DATA struct {
 func SendCodeRequest(body DATA) {
 	reqBody, _ := json.Marshal(body)
 
-	req, _ := http.NewRequest("POST", "http://172.16.95.192:8080/transfer", bytes.NewBuffer(reqBody))
+	req, _ := http.NewRequest("POST", "http://172.16.95.192:8081/transfer", bytes.NewBuffer(reqBody))
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Content-Length", strconv.Itoa(len(reqBody)))
 
@@ -103,6 +102,6 @@ func main() {
 	// Swagger-интерфейс по адресу /swagger/index.html
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
-	// Запуск HTTP-сервера на localhost:8080
-	router.Run("127.0.0.1:8080")
+	// Запуск HTTP-сервера на localhost:8081
+	router.Run("127.0.0.1:8081")
 }

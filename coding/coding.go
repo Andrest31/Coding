@@ -3,9 +3,7 @@ package coding
 import (
 	"errors"
 	"fmt"
-	"math"
 	"math/bits"
-	"math/rand"
 	"st/norm"
 	"time"
 
@@ -87,7 +85,7 @@ func encode(data byte) []byte {
 
 // Внесение 1–3 случайных ошибок в 1 байт с вероятностной моделью
 func makeAdvancedMistakes(data []byte, byteIndex int, randSrc anotherRand.Source) {
-	r := rand.New(randSrc)
+	r := anotherRand.New(randSrc)
 
 	chance := r.Intn(100)
 	numErrors := 1
@@ -110,7 +108,7 @@ func ProcessMessage(msg string, randSrc anotherRand.Source) (res string, err err
 	errorPos := norm.GenerateNormalInt(0, min(len(msg), 100), 130/8, 13, randSrc)
 
 	var processedMsg []byte
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r := anotherRand.New(anotherRand.NewSource(uint64(time.Now().UnixNano())))
 
 	// 5% вероятность потери всего сообщения
 	if r.Intn(100)%20 == 0 {
