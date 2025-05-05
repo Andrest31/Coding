@@ -5,16 +5,16 @@ package docs
 import "github.com/swaggo/swag"
 
 const docTemplate = `{
-    "schemes": {{ marshal .Schemes }},
+    "schemes": [],
     "swagger": "2.0",
     "info": {
-        "description": "{{escape .Description}}",
-        "title": "{{.Title}}",
+        "description": "This is a coding server for Networking.",
+        "title": "Swagger API",
         "contact": {},
-        "version": "{{.Version}}"
+        "version": "1.0"
     },
-    "host": "{{.Host}}",
-    "basePath": "{{.BasePath}}",
+    "host": "localhost:8081",
+    "basePath": "/",
     "paths": {
         "/code": {
             "post": {
@@ -31,7 +31,7 @@ const docTemplate = `{
                 "summary": "Codes and decodes messages",
                 "parameters": [
                     {
-                        "description": "data",
+                        "description": "Data to process",
                         "name": "data",
                         "in": "body",
                         "required": true,
@@ -42,7 +42,10 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.DATA"
+                        }
                     }
                 }
             }
@@ -52,52 +55,44 @@ const docTemplate = `{
         "main.DATA": {
             "type": "object",
             "required": [
-                "data",
-                "message_id",
-                "segment_number",
-                "send_time",
-                "total_segments",
-                "username"
+                "username",
+                "message_part",
+                "timestamp",
+                "sequence_number",
+                "total_parts"
             ],
             "properties": {
-                "data": {
-                    "type": "string"
-                },
-                "message_id": {
-                    "type": "string"
-                },
-                "segment_number": {
-                    "type": "integer"
-                },
-                "send_time": {
-                    "type": "string"
-                },
-                "socket_id": {
-                    "type": "integer"
-                },
-                "total_segments": {
-                    "type": "integer"
-                },
                 "username": {
                     "type": "string"
+                },
+                "message_part": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "sequence_number": {
+                    "type": "integer"
+                },
+                "total_parts": {
+                    "type": "integer"
                 }
             }
         }
     }
 }`
 
-// SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
-	Host:             "localhost:8080",
-	BasePath:         "/",
-	Schemes:          []string{},
-	Title:            "Swagger API",
-	Description:      "This is a coding server for Networking.",
-	InfoInstanceName: "swagger",
-	SwaggerTemplate:  docTemplate,
+    Version:          "1.0",
+    Host:             "localhost:8081",
+    BasePath:         "/",
+    Schemes:          []string{},
+    Title:            "Swagger API",
+    Description:      "This is a coding server for Networking.",
+    InfoInstanceName: "swagger",
+    SwaggerTemplate:  docTemplate,
 }
 
 func init() {
-	swag.Register(SwaggerInfo.InstanceName(), SwaggerInfo)
+    swag.Register(SwaggerInfo.InstanceName(), SwaggerInfo)
 }

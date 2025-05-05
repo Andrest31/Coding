@@ -28,13 +28,11 @@ func init() {
 
 // Структура входных и выходных данных
 type DATA struct {
-	Id            int    `json:"socket_id,omitempty"`               // ID сокета (опционально)
-	Data          string `json:"data" binding:"required"`           // Полезная нагрузка
-	SegmentNumber int    `json:"segment_number" binding:"required"` // Номер сегмента
-	TotalSegments int    `json:"total_segments" binding:"required"` // Общее число сегментов
-	Username      string `json:"username" binding:"required"`       // Имя пользователя
-	SendTime      string `json:"send_time" binding:"required"`      // Время отправки
-	MessageId     string `json:"message_id" binding:"required"`     // ID сообщения
+	Username       string `json:"username" binding:"required"`
+	MessagePart    string `json:"message_part" binding:"required"`
+	Timestamp      string `json:"timestamp" binding:"required"`
+	SequenceNumber int    `json:"sequence_number" binding:"required"`
+	TotalParts     int    `json:"total_parts" binding:"required"`
 }
 
 // Отправка данных обратно в транспортный уровень (предположительно другой сервис)
@@ -55,41 +53,36 @@ func SendCodeRequest(body DATA) {
 }
 
 // @Summary Codes and decodes messages
-// @Schemes
 // @Description Кодирует, вносит ошибки, исправляет и декодирует сообщение
 // @Tags code
-// @Param data body main.DATA true "data"
 // @Accept json
 // @Produce json
-// @Success 200
+// @Param data body main.DATA true "Data to process"
+// @Success 200 {object} main.DATA
 // @Router /code [post]
+
 func CodeHandler(c *gin.Context) {
 	var data DATA
 
-	// Пробуем распарсить JSON-запрос в структуру DATA
 	if err := c.BindJSON(&data); err != nil {
 		log.Println("Ошибка при разборе входных данных:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат данных"})
 		return
 	}
 
-	// Обработка сообщения: кодирование, внесение ошибок, исправление
-	processed, err := coding.ProcessMessage(data.Data, randSrc)
+	processed, err := coding.ProcessMessage(data.MessagePart, randSrc)
 	if err != nil {
 		log.Println("Ошибка обработки сообщения:", err)
 		c.JSON(http.StatusOK, gin.H{
-			"error":       "Сообщение потеряно или повреждено",
-			"message_id":  data.MessageId,
-			"segment_num": data.SegmentNumber,
+			"error":        "Сообщение потеряно или повреждено",
+			"sequence_num": data.SequenceNumber,
 		})
 		return
 	}
 
-	// Возвращаем обработанное сообщение обратно
-	data.Data = processed
+	data.MessagePart = processed
 	c.JSON(http.StatusOK, data)
 
-	// Отправляем сообщение на транспортный уровень в фоне
 	go SendCodeRequest(data)
 }
 
