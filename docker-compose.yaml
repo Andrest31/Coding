@@ -6,8 +6,8 @@ services:
     ports:
       - "8020:8020"
     networks:
-      - kr-network
+      - kr-net-6-sem_kr-network
   
 networks:
-  kr-network:
+  kr-net-6-sem_kr-network:
     external: true
