@@ -33,6 +33,7 @@ type DATA struct {
 	Timestamp      string `json:"timestamp" binding:"required"`
 	SequenceNumber int    `json:"sequence_number" binding:"required"`
 	TotalParts     int    `json:"total_parts" binding:"required"`
+	Error          string `json:"error,omitempty"` // Новое поле для ошибок
 }
 
 // Отправка данных обратно в транспортный уровень (предположительно другой сервис)
@@ -73,26 +74,31 @@ func CodeHandler(c *gin.Context) {
 	processed, err := coding.ProcessMessage(data.MessagePart, randSrc)
 	if err != nil {
 		log.Println("Ошибка обработки сообщения:", err)
-		errorResponse := gin.H{
-			"error":        "Сообщение потеряно или повреждено",
-			"sequence_num": data.SequenceNumber,
-		}
-		c.JSON(http.StatusOK, errorResponse)
 
-		// Отправляем данные об ошибке на транспортный уровень
-		go SendCodeRequest(DATA{
+		// Формируем ответ с ошибкой
+		errorData := DATA{
 			Username:       data.Username,
-			MessagePart:    "", // или можно оставить оригинальное сообщение
+			MessagePart:    "", // Пустое сообщение (или можно оставить исходное)
 			Timestamp:      data.Timestamp,
 			SequenceNumber: data.SequenceNumber,
 			TotalParts:     data.TotalParts,
+			Error:          err.Error(), // Сообщение об ошибке
+		}
+
+		// Отправляем клиенту
+		c.JSON(http.StatusOK, gin.H{
+			"error":        err.Error(),
+			"sequence_num": data.SequenceNumber,
 		})
+
+		// Отправляем на транспортный уровень
+		go SendCodeRequest(errorData)
 		return
 	}
 
+	// Если успешно, отправляем обработанные данные
 	data.MessagePart = processed
 	c.JSON(http.StatusOK, data)
-
 	go SendCodeRequest(data)
 }
 
