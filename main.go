@@ -39,7 +39,7 @@ type DATA struct {
 func SendCodeRequest(body DATA) {
 	reqBody, _ := json.Marshal(body)
 
-	req, _ := http.NewRequest("POST", "main:8010/recieve", bytes.NewBuffer(reqBody))
+	req, _ := http.NewRequest("POST", "main:8010/receive", bytes.NewBuffer(reqBody))
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Content-Length", strconv.Itoa(len(reqBody)))
 
