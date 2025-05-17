@@ -96,5 +96,5 @@ func main() {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	// Запуск HTTP-сервера на localhost:8081
-	router.Run("127.0.0.1:8020")
+	router.Run(":8020")
 }
